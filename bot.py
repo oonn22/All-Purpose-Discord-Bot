@@ -1,68 +1,44 @@
 import discord
+import config
+from database import Database
 from discord.ext import commands
-from discord_database import DiscordDatabase
+from cogs import streamer, announce, manage_users
 from weather import Weather
-from typing import Optional
+from blocked_command_error import BlockedCommandError
+from check_live import CheckLive
 from random import randint
 
 bot = commands.Bot(command_prefix=';',
                    case_insensitive=True,
                    help_command=None
                    )
-db = DiscordDatabase(host='SQL_HOST_HERE',
-                     user='SQL_USER_HERE',
-                     passwd='SQL_PASSWORDHERE'
-                     )
-w = Weather('OPENWEATHERAPI_KEY_HERE')
+db = Database()
+w = Weather(config.open_weather_api_key)
 
-
-# ---EVENTS---------------------------------------------------------------------
+# ---Events---------------------------------------------------------------------
 
 
 @bot.event
 async def on_ready():
-    """ Code here is run on initial successful connection with discord
-    """
-    print('Successfully connected with discord!')
+    print("connected to discord")
+    await db.initialize(config.mysql_host,
+                        config.mysql_port,
+                        config.mysql_user,
+                        config.mysql_password)
+    await db.check_new_guilds(bot.guilds)
 
-    act = discord.Activity(name=';help for commands!',
-                           type=discord.ActivityType.playing)
+    act = discord.Activity(name='twitch.tv/l337_WTD',
+                           type=discord.ActivityType.watching)
     await bot.change_presence(activity=act)
 
 
 @bot.event
 async def on_guild_join(guild):
-    """executes when a new guild is joined. creates tables for the
-    new server and populates a default announcement channel.
-    """
-
-    print('joined server: ' + str(guild) + ', ID: ' + str(guild.id))
-
-    if guild.system_channel:
-        announce_channel = guild.system_channel
-    else:
-        find_gen = discord.utils.find(lambda chnl: 'general' in
-                                                   str(chnl).lower(),
-                                      guild.text_channels)
-
-        if find_gen:  # found a text channel containing general in its name
-            announce_channel = find_gen
-        else:  # no general channel found using 1st text channel in guild
-            announce_channel = guild.text_channels[0]
-
-    db.on_join_guild(str(guild.id), str(announce_channel.id))
-
-    await announce_channel.send('Thanks for inviting me to your server! I will'
-                                ' be using this as a default channel for '
-                                'announcements, if you would like to change '
-                                'that use command: \n '
-                                ';announcement <channel name>')
+    await db.add_new_guild(guild)
 
 
 @bot.event
 async def on_message(message):
-    """ executes whenever a message is sent in any server.
-    """
     if message.author.bot:
         return  # prevents other bots from using ours
 
@@ -72,22 +48,23 @@ async def on_message(message):
 
 @bot.event
 async def on_command_error(ctx, error):
-    """ handling for errors occurring when commands are called
-    """
-
     if isinstance(error, commands.errors.CheckFailure):
         # handling for when a check fails
-        await ctx.channel.send(ctx.author.mention + ' You do not have '
-                               'permission to do that or you\'re banned! '
-                               'Contact an admin for assistance.')
+        await ctx.send(ctx.author.mention + ' You do not have permission to do '
+                                            'that! Contact an admin for '
+                                            'assistance.')
+        print(error)
+    elif isinstance(error, BlockedCommandError):
+        await ctx.send(ctx.author.mention + ' You are banned! Ask an admin to '
+                                            'revoke it!')
     elif isinstance(error, commands.BadArgument):
         # bad arguments past to a command
-        await ctx.channel.send('Invalid arguments!')
+        await ctx.send('Invalid arguments! Your command most likely '
+                       'isn\'t structured properly')
     else:
         # An error occurred in the command
         await ctx.channel.send('There is an error in your command!')
         print(error, type(error))
-
 
 # ---CHECKS---------------------------------------------------------------------
 
@@ -97,34 +74,36 @@ async def is_blocked(ctx) -> bool:
     """ check to see if user id is in blocked database. is a global check that
     verifies on every command.
     """
-    return not db.is_banned(str(ctx.author.id), str(ctx.guild.id))
-    # checks pass on a True value, so need the not to make unbanned users pass
-
+    if await db.is_banned(str(ctx.author.id), str(ctx.guild.id)):
+        raise BlockedCommandError
+    else:
+        return True
 
 # ---COMMANDS-------------------------------------------------------------------
 
 
 @bot.command(name='help')
-async def help_cmd(ctx):
-    """ sends all commands with descriptions
-    """
-    desc = ctx.author.mention + ' Here are my commands!\n\n' \
-           'General Commands: \n' \
-           ';roll [amount] d[sides] - Rolls :amount: of :sides: sided dice.\n'\
-           ';weather - Gives a current forecast for this servers set region.\n'
+async def help(ctx):
+    help_msg = "Here are my commands:\n" \
+               "\n**Admin Commands:**\n" \
+               ";streamer - Gives more info on commands related to twitch " \
+               "streamers\n" \
+               ";announce - Gives more info on commands related to " \
+               "announcements from this bot\n" \
+               ";manageusers - Gives more info on user management commands\n" \
+               "\n**General Commands:**\n" \
+               ";ping - check if im online\n" \
+               ";bug <mmessage> - report a bug by giving a brief description " \
+               "as <message> if one is found\n" \
+               ";roll <amount>d<dice_sides> - rolls <amount> of <dice_sides> " \
+               "sided dice.\n" \
+               ";weather <area> - gives a weather forecast for <area>\n"
+    await ctx.send(help_msg)
 
-    if commands.has_permissions(administrator=True):
-        desc += '\n Admin Only Commands: \n' \
-                ';area [city], [state], [country] - sets the guilds weather ' \
-                    'region. All parameters are optional except city.\n' \
-                ';announce [msg] - sends [msg] to the announcement ' \
-                    'channel, tagging everyone. \n' \
-                ';announcement [channel] - changes which channel ' \
-                    'announcements are sent to. \n' \
-                ';block [user] - prevents [user] from using commands.\n' \
-                ';unblock [user] - allows [user] to use commands again.'
 
-    await ctx.channel.send(desc)
+@bot.command(name='ping')
+async def ping(ctx):
+    await ctx.channel.send('Bot is online!')
 
 
 @bot.command(name='roll')
@@ -155,99 +134,28 @@ async def roll(ctx, *, dice: str):
         raise commands.BadArgument
 
 
+@bot.command(name='bug')
+async def bug(ctx, *, msg: str):
+    """reports a bug to the creator.
+    """
+    creator = await bot.get_user(int(config.discord_creator_id))
+    await creator.send(msg + '\nform: ' + ctx.author.mention)
+
+
 @bot.command(name='weather')
-async def weather(ctx):
-    """ Sends the current weather of the guilds area in the channel command was
-    used.
-    """
-    location = db.get_weather_area(str(ctx.guild.id))
-
-    if location is None or location == 'NULL':
-        await ctx.channel.send('No location set, use ;area to set one!')
-    else:
-        weather_report = 'Weather for ' + location.title() + '\n' + \
-                         w.get_report(location)
-        await ctx.channel.send(weather_report)
+async def weather(ctx, *, location: str):
+    if await w.is_valid_location(location):
+        await ctx.send(await w.get_report(location))
 
 
-@bot.command(name='area')
-@commands.has_permissions(administrator=True)
-async def area(ctx, *,  city_region: str):
-    """ Sets region to provide weather updates for. Announcements
-    will appear in default text channel, unless otherwise specified with
-    ;announcement command. Admins only.
-    """
-    if w.is_valid_location(city_region):
-        db.update_weather_region(city_region, str(ctx.guild.id))
-        await ctx.channel.send('Weather area is now set to: ' + city_region)
-    else:
-        await ctx.channel.send('Area: ' + city_region + ' is Invalid!')
+# ---METHODS--------------------------------------------------------------------
 
+# ---COGS-----------------------------------------------------------------------
+bot.add_cog(streamer.Streamer(bot, db))
+bot.add_cog(announce.Announce(bot, db))
+bot.add_cog(manage_users.ManageUsers(bot, db))
 
-@bot.command(name='announcement')
-@commands.has_permissions(administrator=True)
-async def announcement(ctx, *, chnl: Optional[discord.TextChannel] = None):
-    """ Sets text channel in which announcements from the bot will be posted in.
-    Admins only.
-    """
-    if chnl:
-        db.update_announcement_chnl(str(chnl.id), str(ctx.guild.id))
-        await ctx.channel.send('Announcements will now be posted in ' +
-                               chnl.mention)
-    else:
-        chnl_searched = ctx.message.content[14:]
-        await ctx.channel.send('Could not find channel: ' + chnl_searched + '!')
-
-
-@bot.command(name='announce')
-@commands.has_permissions(administrator=True)
-async def announce(ctx, *, msg: str):
-    """ sends msg to the guilds announcement channel, tagging everyone.
-    """
-    if msg:
-        chnl = bot.get_channel(db.get_announcment_chnl(str(ctx.guild.id)))
-        await chnl.send(ctx.author.mention + ' Says: \n' + msg +
-                        '\n' + str(ctx.guild.default_role))
-
-
-@bot.command(name='block')
-@commands.has_permissions(administrator=True)
-async def block(ctx, *, member: Optional[discord.Member] = None):
-    """ Admin only command. prevents :user: from accessing bot commands in the
-    guild the command is called in.
-    """
-    if member:
-        if db.block_user(str(member.id), str(ctx.guild.id)):
-            # user is not banned
-            await ctx.channel.send('User ' + member.mention + ' was banned!')
-        else:  # user already banned
-            await ctx.channel.send('User ' + member.mention +
-                                   ' already banned!')
-    else:
-        user_searched = ctx.message.content[7:]
-        await ctx.channel.send('Couldn\'t find user: ' + user_searched + '\n' +
-                               'Make sure you are using the correct '
-                               'capitalization, or you can try mentioning them!'
-                               )
-
-
-@bot.command(name='unblock')
-@commands.has_permissions(administrator=True)
-async def unblock(ctx, *, member: Optional[discord.Member] = None):
-    """ Admin only command. Allows :user: to use bot commands again in the guild
-    the command is called in.
-    """
-    if member:
-        if db.unblock_user(str(member.id), str(ctx.guild.id)):
-            await ctx.channel.send('User ' + member.mention + ' was unbanned!')
-
-        else:
-            await ctx.channel.send('User ' + member.mention + ' is not banned!')
-    else:
-        user_searched = ctx.message.content[9:]
-        await ctx.channel.send('Couldn\'t find user: ' + user_searched + '\n' +
-                               'Make sure you are using the correct '
-                               'capitalization, or you can try mentioning them!'
-                               )
-
-bot.run('INSERT_TOKEN_HERE')
+# ------------------------------------------------------------------------------
+live_check = CheckLive()
+bot.loop.create_task(live_check.check_live(bot, db))
+bot.run(config.bot_token)

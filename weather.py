@@ -1,4 +1,4 @@
-import requests
+import aiohttp
 from datetime import datetime
 
 
@@ -15,44 +15,48 @@ class Weather:
     """
     _query_url: str
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str):
         self._query_url = 'http://api.openweathermap.org/data/2.5/' \
-                   'forecast?id=524901&APPID=' + api_key
+                          'forecast?id=524901&APPID=' + api_key
 
-    def get_report(self, location: str) -> str:
-        """ return a current weather report for :location:
-        """
-        if self.is_valid_location(location):
-            response = requests.get(self._query_url + '&q=' + location)
-            weather_info = response.json()
-            current_weather = weather_info['list'][00]
-            report = 'Report Generated as of: '
+    async def get_report(self, location: str) -> str:
+        url = self._query_url + '&q=' + location
 
-            timestamp = current_weather['dt'] + weather_info['city']['timezone']
-            actual_tmp = self._k_to_celsius(current_weather['main']['temp'])
-            felt_tmp = self._k_to_celsius(current_weather['main']['feels_like'])
-            condition = current_weather['weather'][0]['main'] + ', ' + \
-                        current_weather['weather'][0]['description']
+        if await self.is_valid_location(location):
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url=url) as resp:
+                    weather_info = await resp.json()
+                    current_weather = weather_info['list'][00]
+                    report = 'Report Generated for: '
 
-            report += str(datetime.utcfromtimestamp(timestamp)) + \
-                      ' Local time.\n'
-            report += 'Weather: ' + condition + '\n'
-            report += 'Actual Temperature: ' + str(actual_tmp) + '°C\n' + \
-                      'Feels Like: ' + str(felt_tmp) + '°C'
+                    timestamp = current_weather['dt'] + weather_info['city'][
+                        'timezone']
+                    actual_tmp = self._k_to_celsius(
+                        current_weather['main']['temp'])
+                    felt_tmp = self._k_to_celsius(
+                        current_weather['main']['feels_like'])
+                    condition = current_weather['weather'][0]['main'] + ', ' + \
+                                current_weather['weather'][0]['description']
 
-            return report
+                    report += str(datetime.utcfromtimestamp(timestamp)) + \
+                              ' Local time.\n'
+                    report += 'Weather: ' + condition + '\n'
+                    report += 'Actual Temperature: ' + str(
+                        actual_tmp) + '°C\n' + \
+                              'Feels Like: ' + str(felt_tmp) + '°C'
 
-        else:
-            return 'Invalid location: ' + self.location.title()
+                    return report
 
-    def is_valid_location(self, location: str) -> bool:
+    async def is_valid_location(self, location: str) -> bool:
         """return if api query returned valid response
         """
-        response = requests.get(self._query_url + '&q=' + location)
-        return response.status_code == 200
+        url = self._query_url + '&q=' + location
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url=url) as resp:
+                return resp.status == 200
 
     def _k_to_celsius(self, kelvin: float) -> float:
         """ converts kelvin temps to celsius, rounds to 1 decimal.
         """
         return round(kelvin - 273.15, 1)
-
