@@ -1,6 +1,6 @@
 import asyncio
-from database import Database
-from twitch_streamer import TwitchStreamer
+from Classes.database import Database
+from Classes.twitch_streamer import TwitchStreamer
 from discord.ext import commands
 
 

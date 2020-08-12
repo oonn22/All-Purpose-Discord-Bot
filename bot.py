@@ -1,10 +1,10 @@
 import discord
 import config
-from database import Database
+from Classes.database import Database
 from discord.ext import commands
 from cogs import streamer, announce, manage_users
-from weather import Weather
-from blocked_command_error import BlockedCommandError
+from Classes.weather import Weather
+from Classes.blocked_command_error import BlockedCommandError
 from check_live import CheckLive
 from random import randint
 
@@ -159,3 +159,4 @@ bot.add_cog(manage_users.ManageUsers(bot, db))
 live_check = CheckLive()
 bot.loop.create_task(live_check.check_live(bot, db))
 bot.run(config.bot_token)
+# https://discord.com/api/oauth2/authorize?client_id=735617826894774363&permissions=8&scope=bot
