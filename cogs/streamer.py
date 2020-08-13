@@ -5,8 +5,7 @@ from Classes.database import Database
 
 class Streamer(commands.Cog):
 
-    def __init__(self, bot, db: Database):
-        self.bot = bot
+    def __init__(self, db: Database):
         self.db = db
 
     @commands.group()

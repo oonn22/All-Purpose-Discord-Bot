@@ -1,11 +1,12 @@
 import discord
 import config
-from Classes.database import Database
+import traceback
 from discord.ext import commands
-from cogs import streamer, announce, manage_users
+from cogs import streamer, announce, manage_users, games
+from Classes.database import Database
 from Classes.weather import Weather
 from Classes.blocked_command_error import BlockedCommandError
-from check_live import CheckLive
+from Classes.check_live import CheckLive
 from random import randint
 
 bot = commands.Bot(command_prefix=';',
@@ -47,7 +48,7 @@ async def on_message(message):
 
 
 @bot.event
-async def on_command_error(ctx, error):
+async def on_command_error(ctx, error, *args, **kwargs):
     if isinstance(error, commands.errors.CheckFailure):
         # handling for when a check fails
         await ctx.send(ctx.author.mention + ' You do not have permission to do '
@@ -63,7 +64,11 @@ async def on_command_error(ctx, error):
                        'isn\'t structured properly')
     else:
         # An error occurred in the command
+        embed = discord.Embed(title=':x: Event Error', colour=0xe74c3c)  # Red
+        embed.add_field(name='Event', value=error)
+        embed.description = '```py\n%s\n```' % traceback.format_exc()
         await ctx.channel.send('There is an error in your command!')
+        await ctx.channel.send(embed=embed)
         print(error, type(error))
 
 # ---CHECKS---------------------------------------------------------------------
@@ -153,9 +158,11 @@ async def weather(ctx, *, location: str):
 # ---METHODS--------------------------------------------------------------------
 
 # ---COGS-----------------------------------------------------------------------
-bot.add_cog(streamer.Streamer(bot, db))
-bot.add_cog(announce.Announce(bot, db))
+bot.add_cog(streamer.Streamer(db))
+bot.add_cog(announce.Announce(db))
 bot.add_cog(manage_users.ManageUsers(bot, db))
+bot.add_cog(games.Games(db))
+bot.add_cog(games.Slots(db))
 
 # ------------------------------------------------------------------------------
 live_check = CheckLive()

@@ -6,8 +6,7 @@ from typing import Optional
 
 class ManageUsers(commands.Cog):
 
-    def __init__(self, bot, db: Database):
-        self.bot = bot
+    def __init__(self, bot: commands.bot, db: Database):
         self.db = db
 
     @commands.command(name='manageusers')
@@ -40,8 +39,8 @@ class ManageUsers(commands.Cog):
     @commands.command(name='unblock')
     @commands.has_permissions(administrator=True)
     async def unblock(self, ctx, *, member: Optional[discord.Member] = None):
-        """ Admin only command. Allows :user: to use bot commands again in the guild
-        the command is called in.
+        """ Admin only command. Allows :user: to use bot commands again in the
+        guild the command is called in.
         """
         if member:
             if await self.db.unblock_user(str(member.id), str(ctx.guild.id)):

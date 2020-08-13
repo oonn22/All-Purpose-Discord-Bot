@@ -21,6 +21,9 @@ class CheckLive:
                     self.build_dict(guild.id, streamers)
 
                 for streamer in streamers:
+                    if streamer not in self.announced_streamers[guild.id]:
+                        self.announced_streamers[guild.id][streamer] = False
+
                     if await self.check_streamer(TwitchStreamer(streamer),
                                                  guild.id):
                         await a_chnl.send(str(default_role) + " " + streamer

@@ -6,8 +6,7 @@ from typing import Optional
 
 class Announce(commands.Cog):
 
-    def __init__(self, bot, db: Database):
-        self.bot = bot
+    def __init__(self, db: Database):
         self.db = db
 
     @commands.group()
@@ -33,8 +32,8 @@ class Announce(commands.Cog):
     async def announce_here(self, ctx):
         await self.db.set_announcement_channel(str(ctx.guild.id),
                                                str(ctx.channel.id))
-        await ctx.send(
-            ctx.author.mention + ' set this channel for announcements!')
+        await ctx.send(ctx.author.mention +
+                       ' set this channel for announcements!')
 
     @announce.command(name='view')
     async def announce_view(self, ctx):

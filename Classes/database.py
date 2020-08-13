@@ -1,11 +1,14 @@
 import aiomysql
+from time import time
 from typing import List, Optional
 
 """
 Tables we have: 
 gid_announcement - one column Announcement_ID, stores 1 value a channel id
-gid_streamers - two column Streamer_login, stores streamer names for a server
+gid_streamers - one column Streamer_login, stores streamer names for a server
 gid_banned - stores user ids of banned users
+players - 3 columns Player_ID Credits Daily_Reset, stores an id number of 
+          credits and unix time of last daily
 
 """
 
@@ -22,6 +25,9 @@ class Database:
         await self._db.connect(host, port, user, passwd)
         await self._db.execute('CREATE DATABASE IF NOT EXISTS discordtwitch;')
         await self._db.execute('USE discordtwitch;')
+        await self._db.create_table('players', ['Player_ID BIGINT',
+                                                'Credits INT',
+                                                'Daily_Reset BIGINT'])
 
     async def check_new_guilds(self, guilds: list):
         """ Check if any guilds were added while bot was offline, and creates
@@ -44,7 +50,7 @@ class Database:
         """
         gid = str(guild.id)
         await self._db.create_table('g' + gid + '_announcement',
-                                    ['Announcement_ID VARCHAR(255)'])
+                                    ['Announcement_ID BIGINT'])
         await self._db.create_table('g' + gid + '_streamers',
                                     ['Streamer_login VARCHAR(255)'])
         await self._db.create_table('g' + gid + '_bannedusers',
@@ -52,6 +58,36 @@ class Database:
 
         await self.set_announcement_channel(gid,
                                             self._get_default_announce_chnl(guild))
+
+    async def create_player(self, player_id: str):
+        columns = ['Player_ID', 'Credits', 'Daily_Reset']
+        items = [player_id, '10', str(int(time()))]
+        await self._db.insert('players', columns, items)
+
+    async def add_player_credits(self, player_id: str, creds: int):
+        creds = await self.get_player_credits(player_id) + creds
+        await self._db.update('players', ['Credits'], [str(creds)],
+                              'Player_ID = ' + player_id)
+
+    async def update_player_daily(self, player_id: str):
+        await self._db.update('players', ['Daily_Reset'],
+                              [str(int(time()))],
+                              'Player_ID = ' + player_id)
+
+    async def get_player_credits(self, player_id: str) -> int:
+        creds = await self._db.get_values('players', 'Credits',
+                                          'Player_ID = ' + player_id)
+        return int(creds[0][0])
+
+    async def get_player_daily(self, player_id: str) -> int:
+        """ returns unix time of player daily column
+        """
+        time = await self._db.get_values('players', 'Daily_Reset',
+                                         'Player_ID = ' + player_id)
+        return int(time[0][0])
+
+    async def player_exists(self, player_id: str) -> bool:
+        return await self._db.in_table('players', 'Player_ID', player_id)
 
     async def add_new_streamer(self, guild_id: str, streamer_login: str):
         """ Adds streamer_login to the streamer table corresponding to
@@ -72,21 +108,24 @@ class Database:
         """ return list of all streamers in streamer table corresponding to
         :guild_id:
         """
-        streams = await self._db.get_value('g' + guild_id + '_streamers',
-                                     ['Streamer_login'])
+        guild_table = 'g' + guild_id + '_streamers'
+        streams = await self._db.get_columns_values(guild_table,
+                                                    ['Streamer_login'])
         streamers = []
         for item in streams:
             streamers.append(item[0])
         return streamers
 
     async def get_announcement_chnl(self, guild_id: str) -> str:
-        chnl_id = await self._db.get_value('g' + guild_id + '_announcement',
-                                           ['Announcement_ID'])
+        guild_table = 'g' + guild_id + '_announcement'
+        chnl_id = await self._db.get_columns_values(guild_table,
+                                                    ['Announcement_ID'])
         return chnl_id[0][0]
 
     async def set_announcement_channel(self, guild_id, announcement_chnl_id):
         guild_table = 'g' + guild_id + '_announcement'
-        to_replace = await self._db.get_value(guild_table, ['Announcement_ID'])
+        to_replace = await self._db.get_columns_values(guild_table,
+                                                       ['Announcement_ID'])
 
         if to_replace:
             await self._db.update(guild_table, ['Announcement_ID'],
@@ -138,8 +177,8 @@ class Database:
         """ return list of all members id in bannedusers table corresponding to
         :guild_id:
         """
-        ids = await self._db.get_value('g' + guild_id + '_bannedusers',
-                                       ['User_ID'])
+        ids = await self._db.get_columns_values('g' + guild_id + '_bannedusers',
+                                                ['User_ID'])
         member_ids = []
         for item in ids:
             member_ids.append(item[0])
@@ -178,7 +217,8 @@ class _DatabaseInteraction:
             autocommit=True
         )
 
-    async def execute(self, cmd: str, return_results=False) -> Optional[List[tuple]]:
+    async def execute(self, cmd: str, return_results=False) -> \
+            Optional[List[tuple]]:
         """ Executes cmd on MySQL server. returns results if :return_results:.
         """
         async with await self._db.cursor() as cur:
@@ -213,14 +253,23 @@ class _DatabaseInteraction:
                                        True))
         # execute returns a list, if list is empty know not in table so false
 
-    async def get_value(self, table: str, columns: List[str]) -> List[tuple]:
-        """ query and return values from :table: under :column:
+    async def get_columns_values(self, table: str, columns: List[str]) -> \
+            List[tuple]:
+        """ query and return all values from :table: under :column(s):
         """
         command = 'SELECT '
         for item in columns:
             command += item + ', '
         command = command[:-2] + ' FROM ' + table + ';'
 
+        return await self.execute(command, return_results=True)
+
+    async def get_values(self, table: str, column: str, condition: str):
+        """ query and return specific values from :table: under :column: where
+        :condition: is met
+        precondition: :condition: follows proper MySQL syntax
+        """
+        command = 'SELECT ' + column + ' FROM ' + table + ' WHERE ' + condition
         return await self.execute(command, return_results=True)
 
     async def insert(self,  table: str, columns: List[str], items: List[str]) -> None:
