@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from database import Database
+from Classes.database import Database
 from typing import Optional
 
 

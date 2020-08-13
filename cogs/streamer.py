@@ -1,6 +1,6 @@
 from discord.ext import commands
-from twitch_streamer import TwitchStreamer
-from database import Database
+from Classes.twitch_streamer import TwitchStreamer
+from Classes.database import Database
 
 
 class Streamer(commands.Cog):
