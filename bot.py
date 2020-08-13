@@ -104,6 +104,7 @@ async def help(ctx):
 @bot.command(name='ping')
 async def ping(ctx):
     await ctx.channel.send('Bot is online!')
+    await ctx.message.delete()
 
 
 @bot.command(name='roll')
