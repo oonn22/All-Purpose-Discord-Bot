@@ -138,8 +138,9 @@ async def roll(ctx, *, dice: str):
 async def bug(ctx, *, msg: str):
     """reports a bug to the creator.
     """
-    creator = await bot.get_user(int(config.discord_creator_id))
-    await creator.send(msg + '\nform: ' + ctx.author.mention)
+    creator = bot.get_user(int(config.discord_creator_id))
+    await creator.send(msg + '\nfrom: ' + ctx.author.mention)
+    await ctx.message.delete()
 
 
 @bot.command(name='weather')
