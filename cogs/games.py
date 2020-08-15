@@ -2,6 +2,7 @@ from time import time
 from asyncio import sleep
 from discord.ext import commands
 from Classes.database import Database
+from Classes.blackjack_game import BlackjackGame
 from random import randint, choice
 from typing import Optional
 
@@ -34,7 +35,9 @@ class Games(commands.Cog):
               "your bet!\n" \
               ";scoring - see how the scoring system works\n" \
               "\n**Blackjack**\n" \
-              "To Be Implemented\n" \
+              ";deal <bet> - deals your hand and starts the game.\n" \
+              ";hit - add another card to your hand\n" \
+              ";stand - end your turn\n" \
               "\n**Adventure**\n" \
               "Coming Soon!"
         await ctx.send(msg)
@@ -70,7 +73,7 @@ class Games(commands.Cog):
     @commands.command(name='beg')
     @commands.check(check_player_has_account)
     async def beg(self, ctx):
-        if randint(0, 100) == 69:
+        if randint(50, 70) == 69:
             await self.gained_credits(ctx,
                                       str(ctx.author.id),
                                       randint(1, 5),
@@ -96,9 +99,9 @@ class Games(commands.Cog):
 class Slots(commands.Cog):
 
     emojis = (':alien:', ':peach:', ':gun:',
-              ':b:', ':seven:', ':eagle:', ':vhs:')
+              ':b:', ':seven:', ':gem:', ':shield:')
     scoring_dict = {':alien:': 3, ':peach:': 2.5, ':gun:': 1.5,
-               ':b:': 5, ':seven:': 7, ':eagle:': 2, ':vhs:': 0.5}
+               ':b:': 5, ':seven:': 7, ':gem:': 2, ':shield:': 0.5}
 
     def __init__(self, db: Database):
         self.db = db
@@ -169,7 +172,6 @@ class Slots(commands.Cog):
                 if Slots.scoring[roll[i]] > result:
                     result = Slots.scoring[roll[i]]
             j = i // 3
-            print(j + 3, j + 6)
             if roll[j] == roll[j+3] and roll[j+3] == roll[j+6]:
                 if Slots.scoring[roll[j]] > result:
                     result = Slots.scoring[roll[j]]
@@ -184,6 +186,84 @@ class Slots(commands.Cog):
         return result
 
 
-class Blackjack:
+class Blackjack(commands.Cog):
+    games = {}  # struct: 'p_id': BlackjackGame
+
+    def __init__(self, bot: commands.bot, db: Database):
+        self.bot = bot
+        self.db = db
+
+    def player_in_game(ctx):
+        player = str(ctx.author.id)
+        if player not in Blackjack.games:
+            raise NotInGameError
+        return True
+
+    @commands.command(name='deal')
+    @commands.check(Games.check_player_has_account)
+    async def deal(self, ctx, *, bet: Optional[int] = -1):
+        if bet > 0:
+            if await self.db.get_player_credits(str(ctx.author.id)) < bet:
+                await ctx.send("Not enough credits to place bet!")
+            else:
+                msg = await ctx.send('Starting...')
+                chnl_id = ctx.channel.id
+                game = BlackjackGame(msg.id, chnl_id, ctx.author.mention, bet)
+                Blackjack.games[str(ctx.author.id)] = game
+                await self.update_game(game)
+        else:
+            await ctx.send("Please enter a valid bet!")
+
+    @commands.command(name='hit')
+    @commands.check(player_in_game)
+    async def hit(self, ctx):
+        game = Blackjack.games[str(ctx.author.id)]
+        game.draw_player_card()
+        await self.update_game(game)
+        await ctx.message.delete()
+        if game.dealer_turn:
+            await self.dealer_turn(ctx, game)
+
+    @commands.command(name='stand')
+    @commands.check(player_in_game)
+    async def stand(self, ctx):
+        game = Blackjack.games[str(ctx.author.id)]
+        game.player_last_action = 'stand'
+        await ctx.message.delete()
+        await self.update_game(game)
+        await self.dealer_turn(ctx, game)
+
+    async def dealer_turn(self, ctx, game: BlackjackGame):
+        turns = game.take_dealer_turn()
+        chnl = self.bot.get_channel(game.chnl_id)
+        msg = await chnl.fetch_message(game.msg_id)
+        for item in turns:
+            await msg.edit(content=item)
+            await sleep(2)
+        await self.game_over(ctx, game)
+
+    async def update_game(self, game: BlackjackGame):
+        chnl = self.bot.get_channel(game.chnl_id)
+        msg = await chnl.fetch_message(game.msg_id)
+        await msg.edit(content=game.print_game())
+
+    async def game_over(self, ctx, game: BlackjackGame):
+        chnl = self.bot.get_channel(game.chnl_id)
+        game_value = game.determine_game()
+        player_id = None
+        for p_id in Blackjack.games.keys():
+            if Blackjack.games[p_id] is game:
+                player_id = p_id
+                break
+        if game_value == 0:
+            await chnl.send(game.player_mention + ' you drawed! '
+                                                  'Your bet has been returned')
+        elif game_value < 0:
+            await Games.lost_credits(ctx, player_id, -1 * game_value, self.db)
+        else:
+            await Games.gained_credits(ctx, player_id, game_value, self.db)
+
+
+class NotInGameError(commands.CommandError):
     pass
 

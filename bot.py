@@ -58,6 +58,10 @@ async def on_command_error(ctx, error, *args, **kwargs):
     elif isinstance(error, BlockedCommandError):
         await ctx.send(ctx.author.mention + ' You are banned! Ask an admin to '
                                             'revoke it!')
+    elif isinstance(error, games.NotInGameError):
+        await ctx.send(ctx.author.mention + ' please start a game first! '
+                                            'Use **;games** to view game '
+                                            'commands!')
     elif isinstance(error, commands.BadArgument):
         # bad arguments past to a command
         await ctx.send('Invalid arguments! Your command most likely '
@@ -102,7 +106,9 @@ async def help(ctx):
                "as <message> if one is found\n" \
                ";roll <amount>d<dice_sides> - rolls <amount> of <dice_sides> " \
                "sided dice.\n" \
-               ";weather <area> - gives a weather forecast for <area>\n"
+               ";weather <area> - gives a weather forecast for <area>\n" \
+               ";games - view my commands to play games\n" \
+               ";code - view my source code"
     await ctx.send(help_msg)
 
 
@@ -155,6 +161,12 @@ async def weather(ctx, *, location: str):
         await ctx.send(await w.get_report(location))
 
 
+@bot.command(name='code')
+async def code(ctx):
+    await ctx.send('View my code at: '
+                   'https://github.com/oonn22/All-Purpose-Discord-Bot')
+
+
 # ---METHODS--------------------------------------------------------------------
 
 # ---COGS-----------------------------------------------------------------------
@@ -163,6 +175,7 @@ bot.add_cog(announce.Announce(db))
 bot.add_cog(manage_users.ManageUsers(bot, db))
 bot.add_cog(games.Games(db))
 bot.add_cog(games.Slots(db))
+bot.add_cog(games.Blackjack(bot, db))
 
 # ------------------------------------------------------------------------------
 live_check = CheckLive()
