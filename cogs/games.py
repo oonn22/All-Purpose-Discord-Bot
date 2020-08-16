@@ -87,6 +87,10 @@ class Games(commands.Cog):
         await db.add_player_credits(player_id, -bet)
 
     @staticmethod
+    async def return_bet(player_id: str, bet: int, db: Database):
+        await db.add_player_credits(player_id, bet)
+
+    @staticmethod
     async def gained_credits(ctx, player_id: str, amount: int, db: Database):
         await ctx.send(ctx.author.mention + ' Congratulations! '
                                             'you have gained: ' +
@@ -256,18 +260,15 @@ class Blackjack(commands.Cog):
     async def game_over(self, ctx, game: BlackjackGame):
         chnl = self.bot.get_channel(game.chnl_id)
         game_value = game.determine_game()
-        player_id = None
-        for p_id in Blackjack.games.keys():
-            if Blackjack.games[p_id] is game:
-                player_id = p_id
-                break
+        player_id = str(ctx.author.id)
+        await Games.return_bet(player_id, game.bet, self.db)
         if game_value == 0:
             await chnl.send(game.player_mention + ' you drawed! '
                                                   'Your bet has been returned')
         elif game_value < 0:
-            await Games.lost_credits(ctx, player_id, -1 * game_value, self.db)
+            await Games.lost_credits(ctx, player_id, -1 * game.bet, self.db)
         else:
-            await Games.gained_credits(ctx, player_id, game_value, self.db)
+            await Games.gained_credits(ctx, player_id, game.bet, self.db)
 
 
 class NotInGameError(commands.CommandError):

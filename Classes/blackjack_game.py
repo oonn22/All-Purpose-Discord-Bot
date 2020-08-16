@@ -104,13 +104,13 @@ class BlackjackGame:
         elif dealer_total > 21 and player_total > 21:
             return 0
         elif dealer_total > 21 and player_total <= 21:
-            return self.bet * 2
+            return 1
         elif player_total > 21:
-            return -1 * self.bet
+            return -1
         elif player_total > dealer_total:
-            return self.bet * 2
+            return 1
         else:
-            return -1 * self.bet
+            return -1
 
 
     @staticmethod
