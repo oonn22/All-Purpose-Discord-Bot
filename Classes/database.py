@@ -187,7 +187,7 @@ class Database:
     async def is_banned(self, user_id: str, guild_id: str) -> bool:
         """ return whether :user_id: is banned in :guild_id:
         """
-        guild_banned_table = 'g' + guild_id + '_BannedUsers'
+        guild_banned_table = 'g' + guild_id + '_bannedusers'
         return await self._db.in_table(guild_banned_table, 'User_ID', user_id)
 
 
