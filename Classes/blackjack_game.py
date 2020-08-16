@@ -49,7 +49,7 @@ class BlackjackGame:
         self.dealer_hand.append(c)
         self.dealer_last_action = 'Drew a ' + BlackjackGame.card_name_dict[c]
 
-        if BlackjackGame._hand_total(self.player_hand) > 21:
+        if BlackjackGame._hand_total(self.dealer_hand) > 21:
             self.dealer_last_action += ', went bust'
 
     def print_game(self) -> str:

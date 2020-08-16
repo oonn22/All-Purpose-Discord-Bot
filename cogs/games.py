@@ -83,6 +83,10 @@ class Games(commands.Cog):
             await ctx.send("No credits for you!")
 
     @staticmethod
+    async def take_bet(player_id: str, bet: int, db: Database):
+        await db.add_player_credits(player_id, -bet)
+
+    @staticmethod
     async def gained_credits(ctx, player_id: str, amount: int, db: Database):
         await ctx.send(ctx.author.mention + ' Congratulations! '
                                             'you have gained: ' +
@@ -114,6 +118,7 @@ class Slots(commands.Cog):
             if await self.db.get_player_credits(player) < bet:
                 await ctx.send("Not enough credits to place bet!")
             else:
+                await Games.take_bet(player, bet, self.db)
                 roll = Slots._gen_roll()
                 result = Slots._determine_win(roll)
                 await Slots._send_roll(ctx, roll)
@@ -206,6 +211,7 @@ class Blackjack(commands.Cog):
             if await self.db.get_player_credits(str(ctx.author.id)) < bet:
                 await ctx.send("Not enough credits to place bet!")
             else:
+                await Games.take_bet(str(ctx.author.id), bet, self.db)
                 msg = await ctx.send('Starting...')
                 chnl_id = ctx.channel.id
                 game = BlackjackGame(msg.id, chnl_id, ctx.author.mention, bet)
