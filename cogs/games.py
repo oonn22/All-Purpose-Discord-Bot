@@ -55,17 +55,18 @@ class Games(commands.Cog):
         last_daily = await self.db.get_player_daily(str(ctx.author.id))
         now = int(time())
         time_dif = now - last_daily
+        player = str(ctx.author.id)
 
         if time_dif >= 86400:
+            await self.db.update_player_daily(player)
             await self.gained_credits(ctx,
-                                      str(ctx.author.id),
+                                      player,
                                       randint(5, 25),
                                       self.db
                                       )
         else:
             hours = (86400 - time_dif) // 3600
             mins = ((86400 - time_dif) - (hours * 3600)) // 60
-
             await ctx.send(ctx.author.mention + ' you have ' +
                            str(hours) + ' hours and ' + str(mins) +
                            ' minutes until your next daily!')
