@@ -174,7 +174,7 @@ bot.add_cog(streamer.Streamer(db))
 bot.add_cog(announce.Announce(db))
 bot.add_cog(manage_users.ManageUsers(bot, db))
 bot.add_cog(games.Games(db))
-bot.add_cog(games.Slots(db))
+bot.add_cog(games.SlotMachine(db))
 bot.add_cog(games.Blackjack(bot, db))
 
 # ------------------------------------------------------------------------------

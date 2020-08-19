@@ -30,7 +30,7 @@ class Games(commands.Cog):
               ";credits - See how many credits you have.\n" \
               ";daily - claim your daily allowance.\n" \
               ";beg - beg for a chance to recieve some credits.\n" \
-              "\n**Slots**\n" \
+              "\n**Slot Machine**\n" \
               ";slots <bet> - roll the slot machine and win credits based off " \
               "your bet!\n" \
               ";scoring - see how the scoring system works\n" \
@@ -105,7 +105,7 @@ class Games(commands.Cog):
         await db.add_player_credits(player_id, -1 * amount)
 
 
-class Slots(commands.Cog):
+class SlotMachine(commands.Cog):
 
     emojis = (':alien:', ':peach:', ':gun:',
               ':b:', ':seven:', ':gem:', ':shield:')
@@ -124,9 +124,9 @@ class Slots(commands.Cog):
                 await ctx.send("Not enough credits to place bet!")
             else:
                 await Games.take_bet(player, bet, self.db)
-                roll = Slots._gen_roll()
-                result = Slots._determine_win(roll)
-                await Slots._send_roll(ctx, roll)
+                roll = SlotMachine._gen_roll()
+                result = SlotMachine._determine_win(roll)
+                await SlotMachine._send_roll(ctx, roll)
 
                 if 0 < result < 1:
                     amount_lost = bet - bet * result
@@ -144,8 +144,8 @@ class Slots(commands.Cog):
     async def scoring(self, ctx):
         msg = "**Get 3 of any symbol in a row and win!** " \
               "The values for each symbol are: \n"
-        for key in Slots.scoring_dict.keys():
-            msg += key + " bet *x" + str(Slots.scoring_dict[key]) + '*\n'
+        for key in SlotMachine.scoring_dict.keys():
+            msg += key + " bet *x" + str(SlotMachine.scoring_dict[key]) + '*\n'
         await ctx.send(msg)
 
     @staticmethod
@@ -170,7 +170,7 @@ class Slots(commands.Cog):
     def _gen_roll() -> list:
         roll = []
         for i in range(9):
-            roll.append(choice(Slots.emojis))
+            roll.append(choice(SlotMachine.emojis))
         return roll
 
     @staticmethod
@@ -179,19 +179,19 @@ class Slots(commands.Cog):
         # check horizontal and vertical
         for i in range(0, 9, 3):
             if roll[i] == roll[i+1] and roll[i+1] == roll[i+2]:
-                if Slots.scoring[roll[i]] > result:
-                    result = Slots.scoring[roll[i]]
+                if SlotMachine.scoring_dict[roll[i]] > result:
+                    result = SlotMachine.scoring_dict[roll[i]]
             j = i // 3
             if roll[j] == roll[j+3] and roll[j+3] == roll[j+6]:
-                if Slots.scoring[roll[j]] > result:
-                    result = Slots.scoring[roll[j]]
+                if SlotMachine.scoring_dict[roll[j]] > result:
+                    result = SlotMachine.scoring_dict[roll[j]]
         # check diagonal
-        if roll[1] == roll[4] and roll[4] == roll[8]:
-            if Slots.scoring[roll[4]] > result:
-                result = Slots.scoring[roll[4]]
+        if roll[0] == roll[4] and roll[4] == roll[8]:
+            if SlotMachine.scoring_dict[roll[4]] > result:
+                result = SlotMachine.scoring_dict[roll[4]]
         if roll[2] == roll[4] and roll[4] == roll[6]:
-            if Slots.scoring[roll[4]] > result:
-                result = Slots.scoring[roll[4]]
+            if SlotMachine.scoring_dict[roll[4]] > result:
+                result = SlotMachine.scoring_dict[roll[4]]
 
         return result
 
@@ -275,4 +275,6 @@ class Blackjack(commands.Cog):
 
 class NotInGameError(commands.CommandError):
     pass
+
+
 
