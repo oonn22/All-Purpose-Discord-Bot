@@ -10,27 +10,24 @@ class CheckLive:
         self.announced_streamers = {}
 
     async def check_live(self, bot: commands.bot, db: Database) -> None:
-        while True:
-            for guild in bot.guilds:
-                streamers = await db.get_streamers(str(guild.id))
-                a_chnl_id = await db.get_announcement_chnl(str(guild.id))
-                a_chnl = bot.get_channel(int(a_chnl_id))
-                default_role = guild.default_role
+        for guild in bot.guilds:
+            streamers = await db.get_streamers(str(guild.id))
+            a_chnl_id = await db.get_announcement_chnl(str(guild.id))
+            a_chnl = bot.get_channel(int(a_chnl_id))
+            default_role = guild.default_role
 
-                if guild.id not in self.announced_streamers:
-                    self.build_dict(guild.id, streamers)
+            if guild.id not in self.announced_streamers:
+                self.build_dict(guild.id, streamers)
 
-                for streamer in streamers:
-                    if streamer not in self.announced_streamers[guild.id]:
-                        self.announced_streamers[guild.id][streamer] = False
+            for streamer in streamers:
+                if streamer not in self.announced_streamers[guild.id]:
+                    self.announced_streamers[guild.id][streamer] = False
 
-                    if await self.check_streamer(TwitchStreamer(streamer),
-                                                 guild.id):
-                        await a_chnl.send(str(default_role) + " " + streamer
-                                          + " has gone live! check them out at "
-                                          "https://www.twitch.tv/" + streamer)
-
-            await asyncio.sleep(60)
+                if await self.check_streamer(TwitchStreamer(streamer),
+                                             guild.id):
+                    await a_chnl.send(str(default_role) + " " + streamer
+                                      + " has gone live! check them out at "
+                                      "https://www.twitch.tv/" + streamer)
 
     def build_dict(self, guild_id, streamers: list):
         self.announced_streamers[guild_id] = {}

@@ -15,6 +15,7 @@ bot = commands.Bot(command_prefix=';',
                    )
 db = Database()
 w = Weather(config.open_weather_api_key)
+live_check = CheckLive()
 
 # ---Events---------------------------------------------------------------------
 
@@ -32,6 +33,7 @@ async def on_ready():
     act = discord.Activity(name='twitch.tv/l337_WTD',
                            type=discord.ActivityType.watching)
     await bot.change_presence(activity=act)
+    await is_live.start()
 
 
 @bot.event
@@ -170,6 +172,11 @@ async def code(ctx):
 
 # ---METHODS--------------------------------------------------------------------
 
+# ---TASKS----------------------------------------------------------------------
+@tasks.loop(minutes=1.0)
+async def is_live():
+    await live_check.check_live(bot, db)
+
 # ---COGS-----------------------------------------------------------------------
 bot.add_cog(streamer.Streamer(db))
 bot.add_cog(announce.Announce(db))
@@ -179,7 +186,6 @@ bot.add_cog(games.SlotMachine(db))
 bot.add_cog(games.Blackjack(bot, db))
 
 # ------------------------------------------------------------------------------
-live_check = CheckLive()
-bot.loop.create_task(live_check.check_live(bot, db))
+
 bot.run(config.bot_token)
 # https://discord.com/api/oauth2/authorize?client_id=735617826894774363&permissions=8&scope=bot
