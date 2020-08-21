@@ -1,7 +1,7 @@
 import discord
 import config
 import traceback
-from discord.ext import commands
+from discord.ext import commands, tasks
 from cogs import streamer, announce, manage_users, games
 from Classes.database import Database
 from Classes.weather import Weather
@@ -25,7 +25,8 @@ async def on_ready():
     await db.initialize(config.mysql_host,
                         config.mysql_port,
                         config.mysql_user,
-                        config.mysql_password)
+                        config.mysql_password,
+                        bot.loop)
     await db.check_new_guilds(bot.guilds)
 
     act = discord.Activity(name='twitch.tv/l337_WTD',

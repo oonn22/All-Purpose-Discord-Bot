@@ -21,8 +21,8 @@ class Database:
     def __init__(self):
         self._db = _DatabaseInteraction()
 
-    async def initialize(self, host: str, port: int,  user: str, passwd: str):
-        await self._db.connect(host, port, user, passwd)
+    async def initialize(self, host: str, port: int,  user: str, passwd: str, loop):
+        await self._db.connect(host, port, user, passwd, loop)
         await self._db.execute('CREATE DATABASE IF NOT EXISTS discordtwitch;')
         await self._db.execute('USE discordtwitch;')
         await self._db.create_table('players', ['Player_ID BIGINT',
@@ -203,29 +203,37 @@ class _DatabaseInteraction:
     === Representation Invariants ===
 
     """
-    _db: aiomysql
+    _pool: aiomysql.pool
 
-    async def connect(self, host: str, port: int, user: str, passwd: str):
+    async def connect(self, host: str, port: int, user: str, passwd: str, loop):
         """ creates a MySQL instance by connecting to a server with the given
         credentials, and assigns us a way to interact with our server.
         """
-        self._db = await aiomysql.connect(
+        self._pool = await aiomysql.create_pool(
             host=host,
             port=port,
             user=user,
             password=passwd,
-            autocommit=True
+            autocommit=True,
+            loop=loop
         )
 
     async def execute(self, cmd: str, return_results=False) -> \
             Optional[List[tuple]]:
         """ Executes cmd on MySQL server. returns results if :return_results:.
         """
-        async with await self._db.cursor() as cur:
-            await cur.execute(cmd)
-            result = await cur.fetchall() if return_results else None
-            await cur.close()
+        async with self._pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(cmd)
+                result = await cur.fetchall() if return_results else None
+                await cur.close()
         return result
+
+        # async with await self._db.cursor() as cur:
+        #     await cur.execute(cmd)
+        #     result = await cur.fetchall() if return_results else None
+        #     await cur.close()
+        # return result
 
     async def create_table(self, table_name: str,
                      columns_name_type: List[str]) -> None:
