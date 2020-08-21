@@ -41,7 +41,7 @@ class Streamer(commands.Cog):
     @streamer.command(name='view')
     async def view_streamers(self, ctx):
         streamers = await self.db.get_streamers(str(ctx.guild.id))
-        msg = 'Streamers notified for:\n```\ng'
+        msg = 'Streamers notified for:\n```\n'
 
         for streamer in streamers:
             msg += streamer + '\n'
