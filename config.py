@@ -6,6 +6,7 @@ mysql_host = 'HOST NAME HERE'
 mysql_port = PORT NUMBER HERE
 mysql_user = "USER NAME HERE"
 mysql_password = "PASSWORD HERE"
+mysql_database_name = "NAME OF DATABASE TO USE HERE"
 twitch_client_id = "CLIENT ID HERE"
 twitch_client_secret = "CLIENT SECRET HERE"
 discord_creator_id = "ID HERE"
