@@ -29,7 +29,8 @@ class Games(commands.Cog):
               "\n**General**:\n" \
               ";credits - See how many credits you have.\n" \
               ";daily - claim your daily allowance.\n" \
-              ";beg - beg for a chance to recieve some credits.\n" \
+              ";beg - beg for a chance to receive some credits.\n" \
+              ";leaderboard - show who's dominating the server.\n" \
               "\n**Slot Machine**\n" \
               ";slots <bet> - roll the slot machine and win credits based off " \
               "your bet!\n" \
@@ -74,7 +75,7 @@ class Games(commands.Cog):
     @commands.command(name='beg')
     @commands.check(check_player_has_account)
     async def beg(self, ctx):
-        if randint(50, 70) == 69:
+        if randint(5, 70) == 69:
             await self.gained_credits(ctx,
                                       str(ctx.author.id),
                                       randint(1, 5),
@@ -82,6 +83,29 @@ class Games(commands.Cog):
                                       )
         else:
             await ctx.send("No credits for you!")
+
+    @commands.command(name='leaderboard')
+    async def leaderboard(self, ctx):
+        users_in_guild = []
+        msg = "The top players in this server are:\n"
+        for user in ctx.guild.members:
+            if await self.db.player_exists(str(user.id)):
+                creds = await self.db.get_player_credits(str(user.id))
+                users_in_guild.append((user.name, creds))
+
+        users_in_guild.sort(key=lambda x: x[1], reverse=True)
+        users = 10
+        if len(users_in_guild) < 10:
+            users = len(users_in_guild)
+
+        for i in range(1, users + 1):
+            user = users_in_guild[i - 1]
+            if i <= 3:
+                msg += '**' + str(i) + '. ' + user[0] + ': ' + str(user[1]) + ' credits**\n'
+            else:
+                msg += str(i) + '. ' + user[0] + ': ' + str(user[1]) + ' credits\n'
+
+        await ctx.send(msg)
 
     @staticmethod
     async def take_bet(player_id: str, bet: int, db: Database):
@@ -108,9 +132,9 @@ class Games(commands.Cog):
 class SlotMachine(commands.Cog):
 
     emojis = (':alien:', ':peach:', ':gun:',
-              ':b:', ':seven:', ':gem:', ':shield:')
+              ':b:', ':seven:', ':gem:')
     scoring_dict = {':alien:': 3, ':peach:': 2.5, ':gun:': 1.5,
-               ':b:': 5, ':seven:': 7, ':gem:': 2, ':shield:': 0.5}
+               ':b:': 5, ':seven:': 7, ':gem:': 4}
 
     def __init__(self, db: Database):
         self.db = db
@@ -128,15 +152,13 @@ class SlotMachine(commands.Cog):
                 result = SlotMachine._determine_win(roll)
                 await SlotMachine._send_roll(ctx, roll)
 
-                if 0 < result < 1:
-                    amount_lost = bet - bet * result
-                    await Games.lost_credits(ctx, player, amount_lost, self.db)
-                elif result < 1:
-                    amount_lost = -1 * bet * result
-                    await Games.lost_credits(ctx, player, amount_lost, self.db)
+                if result < 1:
+                    amount_lost = bet
+                    await Games.return_bet(player, int(amount_lost), self.db)
+                    await Games.lost_credits(ctx, player, int(amount_lost), self.db)
                 else:
                     amount_won = bet * result
-                    await Games.gained_credits(ctx, player, amount_won, self.db)
+                    await Games.gained_credits(ctx, player, int(amount_won), self.db)
         else:
             await ctx.send("Please enter a valid bet!")
 
@@ -271,6 +293,7 @@ class Blackjack(commands.Cog):
             await Games.lost_credits(ctx, player_id, game.bet, self.db)
         else:
             await Games.gained_credits(ctx, player_id, game.bet * 2, self.db)
+        del Blackjack.games[player_id]
 
 
 class NotInGameError(commands.CommandError):

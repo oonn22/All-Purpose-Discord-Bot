@@ -215,7 +215,8 @@ class _DatabaseInteraction:
             user=user,
             password=passwd,
             autocommit=True,
-            loop=loop
+            loop=loop,
+            db='discordtwitch'
         )
 
     async def execute(self, cmd: str, return_results=False) -> \
@@ -319,5 +320,7 @@ class _DatabaseInteraction:
         """
         command = 'DELETE FROM ' + table + ' WHERE ' + delete_condition + ';'
         await self.execute(command)
+
+
 
 
