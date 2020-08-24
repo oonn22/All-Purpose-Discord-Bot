@@ -235,14 +235,17 @@ class Blackjack(commands.Cog):
     @commands.check(Games.check_player_has_account)
     async def deal(self, ctx, *, bet: Optional[int] = -1):
         if bet > 0:
-            if await self.db.get_player_credits(str(ctx.author.id)) < bet:
-                await ctx.send("Not enough credits to place bet!")
+            player_id = str(ctx.author.id)
+            if player_id in Blackjack.games:
+                await ctx.send('Player is already in a game. Finish the other game first!')
+            elif await self.db.get_player_credits(player_id) < bet:
+                await ctx.send('Not enough credits to place bet!')
             else:
-                await Games.take_bet(str(ctx.author.id), bet, self.db)
+                await Games.take_bet(player_id, bet, self.db)
                 msg = await ctx.send('Starting...')
                 chnl_id = ctx.channel.id
                 game = BlackjackGame(msg.id, chnl_id, ctx.author.mention, bet)
-                Blackjack.games[str(ctx.author.id)] = game
+                Blackjack.games[player_id] = game
                 await self.update_game(game)
         else:
             await ctx.send("Please enter a valid bet!")
