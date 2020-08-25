@@ -1,6 +1,7 @@
 import discord
 import config
 import Classes.database as database
+import Classes.discord_helpers as discord_helpers
 from discord.ext import commands, tasks
 from cogs import streamer, announce, manage_users, games
 from Classes.weather import Weather
@@ -53,21 +54,20 @@ async def on_message(message):
 async def on_command_error(ctx, error, *args, **kwargs):
     if isinstance(error, commands.errors.CheckFailure):
         # handling for when a check fails
-        await ctx.send(ctx.author.mention + ' You do not have permission to do '
-                                            'that! Contact an admin for '
-                                            'assistance.')
+        res = await ctx.send(ctx.author.mention + ' You do not have permission to do that! '
+                                                  'Contact an admin for assistance.')
+        await discord_helpers.del_msgs_after([ctx.message, res])
         print(error)
     elif isinstance(error, BlockedCommandError):
-        await ctx.send(ctx.author.mention + ' You are banned! Ask an admin to '
-                                            'revoke it!')
+        res = await ctx.send(ctx.author.mention + ' You are banned! Ask an admin to revoke it!')
+        await discord_helpers.del_msgs_after([ctx.message, res])
     elif isinstance(error, games.NotInGameError):
-        await ctx.send(ctx.author.mention + ' please start a game first! '
-                                            'Use **;games** to view game '
-                                            'commands!')
+        res = await ctx.send(ctx.author.mention + ' please start a game first! Use **;games** to view game commands!')
+        await discord_helpers.del_msgs_after([ctx.message, res], delay_until_del=10)
     elif isinstance(error, commands.BadArgument):
         # bad arguments past to a command
-        await ctx.send('Invalid arguments! Your command most likely '
-                       'isn\'t structured properly')
+        res = await ctx.send('Invalid arguments! Your command most likely isn\'t structured properly')
+        await discord_helpers.del_msgs_after([ctx.message, res])
     else:
         await ctx.channel.send('There is an error in your command!')
         print(error, type(error))
@@ -111,8 +111,8 @@ async def help(ctx):
 
 @bot.command(name='ping')
 async def ping(ctx):
-    await ctx.channel.send('Bot is online!')
-    await ctx.message.delete()
+    response = await ctx.channel.send('Bot is online!')
+    await discord_helpers.del_msgs_after([ctx.message, response], delay_until_del=10)
 
 
 @bot.command(name='roll')

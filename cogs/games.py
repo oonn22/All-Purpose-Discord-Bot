@@ -1,3 +1,4 @@
+import Classes.discord_helpers as discord_helpers
 from time import time
 from asyncio import sleep
 from discord.ext import commands
@@ -45,6 +46,7 @@ class Games(commands.Cog):
     @commands.command(name='credits')
     @commands.check(check_player_has_account)
     async def credits(self, ctx):
+        await ctx.message.delete()
         creds = await Games.db.get_player_credits(str(ctx.author.id))
         await ctx.send(ctx.author.mention + ' you have: ' +
                        str(creds) + ' Credits!')
@@ -52,6 +54,7 @@ class Games(commands.Cog):
     @commands.command(name='daily')
     @commands.check(check_player_has_account)
     async def daily(self, ctx):
+        await ctx.message.delete()
         last_daily = await Games.db.get_player_daily(str(ctx.author.id))
         now = int(time())
         time_dif = now - last_daily
@@ -74,17 +77,26 @@ class Games(commands.Cog):
     @commands.command(name='beg')
     @commands.check(check_player_has_account)
     async def beg(self, ctx):
-        if randint(5, 70) == 69:
+        rand = randint(5, 70)
+        if rand == 69:
             await self.gained_credits(ctx,
                                       str(ctx.author.id),
                                       randint(1, 5),
                                       Games.db
                                       )
+        elif rand == 68:
+            await self.lost_credits(ctx,
+                                    str(ctx.author.id),
+                                    1,
+                                    Games.db
+                                    )
         else:
-            await ctx.send("No credits for you!")
+            res = await ctx.send("No credits for you!")
+            await discord_helpers.del_msgs_after([ctx.message, res])
 
     @commands.command(name='leaderboard')
     async def leaderboard(self, ctx):
+        await ctx.message.delete()
         users_in_guild = []
         msg = "The top players in this server are:\n"
         for user in ctx.guild.members:
@@ -169,7 +181,8 @@ class SlotMachine(commands.Cog):
               "The values for each symbol are: \n"
         for key in SlotMachine.scoring_dict.keys():
             msg += key + " bet *x" + str(SlotMachine.scoring_dict[key]) + '*\n'
-        await ctx.send(msg)
+        res = await ctx.send(msg)
+        await discord_helpers.del_msgs_after([ctx.message, res], delay_until_del=30)
 
     @staticmethod
     async def _send_roll(ctx, roll: [list]):

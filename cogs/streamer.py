@@ -1,3 +1,4 @@
+import Classes.discord_helpers as discord_helpers
 from discord.ext import commands
 from Classes.twitch_streamer import TwitchStreamer
 from Classes.database import StreamerDatabase
@@ -23,23 +24,27 @@ class Streamer(commands.Cog):
     @streamer.command(name='add')
     async def add_streamer(self, ctx, *, streamer_login: str):
         stream = TwitchStreamer(streamer_login)
-
+        res = None
         if await stream.validate_user():
             await self.db.add_new_streamer(str(ctx.guild.id), streamer_login)
-            await ctx.send('Successfully added streamer!')
+            res = await ctx.send('Successfully added streamer!')
         else:
-            await ctx.send('Can\'t find streamer, check spelling!')
+            res = await ctx.send('Can\'t find streamer, check spelling!')
+        await discord_helpers.del_msgs_after([ctx.message, res], delay_until_del=10)
 
     @streamer.command(name='remove')
     async def remove_streamer(self, ctx, *, streamer_login: str):
+        res = None
         if streamer_login in await self.db.get_streamers(str(ctx.guild.id)):
             await self.db.remove_streamer(str(ctx.guild.id), streamer_login)
-            await ctx.send('Removed streamer!')
+            res = await ctx.send('Removed streamer!')
         else:
-            await ctx.send('Can\'t find streamer, check spelling!')
+            res =await ctx.send('Can\'t find streamer, check spelling!')
+        await discord_helpers.del_msgs_after([ctx.message, res], delay_until_del=10)
 
     @streamer.command(name='view')
     async def view_streamers(self, ctx):
+        await ctx.message.delete()
         streamers = await self.db.get_streamers(str(ctx.guild.id))
         msg = 'Streamers notified for:\n```\n'
 
