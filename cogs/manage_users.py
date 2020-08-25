@@ -1,12 +1,12 @@
 import discord
 from discord.ext import commands
-from Classes.database import Database
+from Classes.database import ServerManageDatabase
 from typing import Optional
 
 
 class ManageUsers(commands.Cog):
 
-    def __init__(self, bot: commands.bot, db: Database):
+    def __init__(self, db: ServerManageDatabase):
         self.db = db
 
     @commands.command(name='manageusers')
@@ -19,8 +19,8 @@ class ManageUsers(commands.Cog):
     @commands.command(name='block')
     @commands.has_permissions(administrator=True)
     async def block(self, ctx, *, member: Optional[discord.Member] = None):
-        """ Admin only command. prevents :user: from accessing bot commands in the
-        guild the command is called in.
+        """ Admin only command. prevents :user: from accessing bot commands in
+        the guild the command is called in.
         """
         if member:
             if await self.db.block_user(str(member.id), str(ctx.guild.id)):

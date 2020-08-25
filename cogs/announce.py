@@ -1,12 +1,12 @@
 import discord
 from discord.ext import commands
-from Classes.database import Database
+from Classes.database import ServerManageDatabase
 from typing import Optional
 
 
 class Announce(commands.Cog):
 
-    def __init__(self, db: Database):
+    def __init__(self, db: ServerManageDatabase):
         self.db = db
 
     @commands.group()

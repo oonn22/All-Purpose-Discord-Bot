@@ -1,19 +1,19 @@
 from time import time
 from asyncio import sleep
 from discord.ext import commands
-from Classes.database import Database
+from Classes.database import GamesDatabase
 from Classes.blackjack_game import BlackjackGame
 from random import randint, choice
 from typing import Optional
 
 
 class Games(commands.Cog):
-    db = None  # to use with or check, will figure out a better way to do this
+    db = None  # used staticly in this class for static checks
 
-    def __init__(self, db: Database):
-        self.db = db
+    def __init__(self, db: GamesDatabase):
         Games.db = db
 
+    @staticmethod
     async def check_player_has_account(ctx) -> bool:
         if not await Games.db.player_exists(str(ctx.author.id)):
             await Games.db.create_player(str(ctx.author.id))
@@ -46,24 +46,24 @@ class Games(commands.Cog):
     @commands.command(name='credits')
     @commands.check(check_player_has_account)
     async def credits(self, ctx):
-        creds = await self.db.get_player_credits(str(ctx.author.id))
+        creds = await Games.db.get_player_credits(str(ctx.author.id))
         await ctx.send(ctx.author.mention + ' you have: ' +
                        str(creds) + ' Credits!')
 
     @commands.command(name='daily')
     @commands.check(check_player_has_account)
     async def daily(self, ctx):
-        last_daily = await self.db.get_player_daily(str(ctx.author.id))
+        last_daily = await Games.db.get_player_daily(str(ctx.author.id))
         now = int(time())
         time_dif = now - last_daily
         player = str(ctx.author.id)
 
         if time_dif >= 86400:
-            await self.db.update_player_daily(player)
+            await Games.db.update_player_daily(player)
             await self.gained_credits(ctx,
                                       player,
                                       randint(5, 25),
-                                      self.db
+                                      Games.db
                                       )
         else:
             hours = (86400 - time_dif) // 3600
@@ -79,7 +79,7 @@ class Games(commands.Cog):
             await self.gained_credits(ctx,
                                       str(ctx.author.id),
                                       randint(1, 5),
-                                      self.db
+                                      Games.db
                                       )
         else:
             await ctx.send("No credits for you!")
@@ -89,8 +89,8 @@ class Games(commands.Cog):
         users_in_guild = []
         msg = "The top players in this server are:\n"
         for user in ctx.guild.members:
-            if await self.db.player_exists(str(user.id)):
-                creds = await self.db.get_player_credits(str(user.id))
+            if await Games.db.player_exists(str(user.id)):
+                creds = await Games.db.get_player_credits(str(user.id))
                 users_in_guild.append((user.name, creds))
 
         users_in_guild.sort(key=lambda x: x[1], reverse=True)
@@ -101,29 +101,32 @@ class Games(commands.Cog):
         for i in range(1, users + 1):
             user = users_in_guild[i - 1]
             if i <= 3:
-                msg += '**' + str(i) + '. ' + user[0] + ': ' + str(user[1]) + ' credits**\n'
+                msg += '**' + str(i) + '. ' + user[0] + ': ' + str(user[1]) + \
+                       ' credits**\n'
             else:
-                msg += str(i) + '. ' + user[0] + ': ' + str(user[1]) + ' credits\n'
+                msg += str(i) + '. ' + user[0] + ': ' + str(user[1]) + \
+                       ' credits\n'
 
         await ctx.send(msg)
 
     @staticmethod
-    async def take_bet(player_id: str, bet: int, db: Database):
+    async def take_bet(player_id: str, bet: int, db: GamesDatabase):
         await db.add_player_credits(player_id, -bet)
 
     @staticmethod
-    async def return_bet(player_id: str, bet: int, db: Database):
+    async def return_bet(player_id: str, bet: int, db: GamesDatabase):
         await db.add_player_credits(player_id, bet)
 
     @staticmethod
-    async def gained_credits(ctx, player_id: str, amount: int, db: Database):
+    async def gained_credits(ctx, player_id: str,
+                             amount: int, db: GamesDatabase):
         await ctx.send(ctx.author.mention + ' Congratulations! '
                                             'you have gained: ' +
                        str(amount) + ' Credits!')
         await db.add_player_credits(player_id, amount)
 
     @staticmethod
-    async def lost_credits(ctx, player_id: str, amount: int, db: Database):
+    async def lost_credits(ctx, player_id: str, amount: int, db: GamesDatabase):
         await ctx.send(ctx.author.mention + ' you have lost: ' +
                        str(amount) + ' Credits! Better luck next time!')
         await db.add_player_credits(player_id, -1 * amount)
@@ -136,29 +139,28 @@ class SlotMachine(commands.Cog):
     scoring_dict = {':alien:': 3, ':peach:': 2.5, ':gun:': 1.5,
                ':b:': 5, ':seven:': 7, ':gem:': 4}
 
-    def __init__(self, db: Database):
-        self.db = db
-
     @commands.command(name='slots')
     @commands.check(Games.check_player_has_account)
     async def slots(self, ctx, *, bet: Optional[int] = -1):
         if bet > 0:
             player = str(ctx.author.id)
-            if await self.db.get_player_credits(player) < bet:
+            if await Games.db.get_player_credits(player) < bet:
                 await ctx.send("Not enough credits to place bet!")
             else:
-                await Games.take_bet(player, bet, self.db)
+                await Games.take_bet(player, bet, Games.db)
                 roll = SlotMachine._gen_roll()
                 result = SlotMachine._determine_win(roll)
                 await SlotMachine._send_roll(ctx, roll)
 
                 if result < 1:
                     amount_lost = bet
-                    await Games.return_bet(player, int(amount_lost), self.db)
-                    await Games.lost_credits(ctx, player, int(amount_lost), self.db)
+                    await Games.return_bet(player, int(amount_lost), Games.db)
+                    await Games.lost_credits(ctx, player,
+                                             int(amount_lost), Games.db)
                 else:
                     amount_won = bet * result
-                    await Games.gained_credits(ctx, player, int(amount_won), self.db)
+                    await Games.gained_credits(ctx, player,
+                                               int(amount_won), Games.db)
         else:
             await ctx.send("Please enter a valid bet!")
 
@@ -221,10 +223,10 @@ class SlotMachine(commands.Cog):
 class Blackjack(commands.Cog):
     games = {}  # struct: 'p_id': BlackjackGame
 
-    def __init__(self, bot: commands.bot, db: Database):
+    def __init__(self, bot: commands.bot):
         self.bot = bot
-        self.db = db
 
+    @staticmethod
     def player_in_game(ctx):
         player = str(ctx.author.id)
         if player not in Blackjack.games:
@@ -237,16 +239,17 @@ class Blackjack(commands.Cog):
         if bet > 0:
             player_id = str(ctx.author.id)
             if player_id in Blackjack.games:
-                await ctx.send('Player is already in a game. Finish the other game first!')
-            elif await self.db.get_player_credits(player_id) < bet:
+                await ctx.send('Player is already in a game. '
+                               'Finish the other game first!')
+            elif await Games.db.get_player_credits(player_id) < bet:
                 await ctx.send('Not enough credits to place bet!')
             else:
-                await Games.take_bet(player_id, bet, self.db)
+                await Games.take_bet(player_id, bet, Games.db)
                 msg = await ctx.send('Starting...')
                 chnl_id = ctx.channel.id
                 game = BlackjackGame(msg.id, chnl_id, ctx.author.mention, bet)
                 Blackjack.games[player_id] = game
-                await self.update_game(game)
+                await Games.update_game(game)
         else:
             await ctx.send("Please enter a valid bet!")
 
@@ -290,12 +293,12 @@ class Blackjack(commands.Cog):
         if game_value == 0:
             await chnl.send(game.player_mention + ' you drawed! '
                                                   'Your bet has been returned')
-            await Games.return_bet(player_id, game.bet, self.db)
+            await Games.return_bet(player_id, game.bet, Games.db)
         elif game_value < 0:
-            await Games.return_bet(player_id, game.bet, self.db)
-            await Games.lost_credits(ctx, player_id, game.bet, self.db)
+            await Games.return_bet(player_id, game.bet, Games.db)
+            await Games.lost_credits(ctx, player_id, game.bet, Games.db)
         else:
-            await Games.gained_credits(ctx, player_id, game.bet * 2, self.db)
+            await Games.gained_credits(ctx, player_id, game.bet * 2, Games.db)
         del Blackjack.games[player_id]
 
 

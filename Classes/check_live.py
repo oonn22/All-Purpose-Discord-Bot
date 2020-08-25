@@ -1,18 +1,22 @@
 import asyncio
-from Classes.database import Database
+from Classes.database import StreamerDatabase, ServerManageDatabase
 from Classes.twitch_streamer import TwitchStreamer
 from discord.ext import commands
 
 
 class CheckLive:
 
-    def __init__(self):
+    def __init__(self, streamer_db: StreamerDatabase,
+                 server_manage_db: ServerManageDatabase):
         self.announced_streamers = {}
+        self.streamer_db = streamer_db
+        self.server_manage_db = server_manage_db
 
-    async def check_live(self, bot: commands.bot, db: Database) -> None:
+    async def check_live(self, bot: commands.bot) -> None:
         for guild in bot.guilds:
-            streamers = await db.get_streamers(str(guild.id))
-            a_chnl_id = await db.get_announcement_chnl(str(guild.id))
+            gid = str(guild.id)
+            streamers = await self.streamer_db.get_streamers(gid)
+            a_chnl_id = await self.server_manage_db.get_announcement_chnl(gid)
             a_chnl = bot.get_channel(int(a_chnl_id))
             default_role = guild.default_role
 

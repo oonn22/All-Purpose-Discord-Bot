@@ -1,9 +1,9 @@
 import discord
 import config
 import traceback
+import Classes.database as database
 from discord.ext import commands, tasks
 from cogs import streamer, announce, manage_users, games
-from Classes.database import Database
 from Classes.weather import Weather
 from Classes.blocked_command_error import BlockedCommandError
 from Classes.check_live import CheckLive
@@ -13,9 +13,11 @@ bot = commands.Bot(command_prefix=';',
                    case_insensitive=True,
                    help_command=None
                    )
-db = Database()
+management_db = database.ServerManageDatabase()
+streamer_db = database.StreamerDatabase()
+games_db = database.GamesDatabase()
 w = Weather(config.open_weather_api_key)
-live_check = CheckLive()
+live_check = CheckLive(streamer_db, management_db)
 
 # ---Events---------------------------------------------------------------------
 
@@ -23,12 +25,10 @@ live_check = CheckLive()
 @bot.event
 async def on_ready():
     print("connected to discord")
-    await db.initialize(config.mysql_host,
-                        config.mysql_port,
-                        config.mysql_user,
-                        config.mysql_password,
-                        bot.loop)
-    await db.check_new_guilds(bot.guilds)
+    await management_db.initialize()
+    await streamer_db.initialize()
+    await games_db.initialize()
+    await management_db.check_new_guilds(bot.guilds)
 
     act = discord.Activity(name='twitch.tv/l337_WTD',
                            type=discord.ActivityType.watching)
@@ -38,7 +38,7 @@ async def on_ready():
 
 @bot.event
 async def on_guild_join(guild):
-    await db.add_new_guild(guild)
+    await management_db.add_new_guild(guild)
 
 
 @bot.event
@@ -70,12 +70,7 @@ async def on_command_error(ctx, error, *args, **kwargs):
         await ctx.send('Invalid arguments! Your command most likely '
                        'isn\'t structured properly')
     else:
-        # An error occurred in the command
-        embed = discord.Embed(title=':x: Event Error', colour=0xe74c3c)  # Red
-        embed.add_field(name='Event', value=error)
-        embed.description = '```py\n%s\n```' % traceback.format_exc()
         await ctx.channel.send('There is an error in your command!')
-        await ctx.channel.send(embed=embed)
         print(error, type(error))
 
 # ---CHECKS---------------------------------------------------------------------
@@ -86,7 +81,7 @@ async def is_blocked(ctx) -> bool:
     """ check to see if user id is in blocked database. is a global check that
     verifies on every command.
     """
-    if await db.is_banned(str(ctx.author.id), str(ctx.guild.id)):
+    if await management_db.is_banned(str(ctx.author.id), str(ctx.guild.id)):
         raise BlockedCommandError
     else:
         return True
@@ -175,15 +170,15 @@ async def code(ctx):
 # ---TASKS----------------------------------------------------------------------
 @tasks.loop(minutes=1.0)
 async def is_live():
-    await live_check.check_live(bot, db)
+    await live_check.check_live(bot)
 
 # ---COGS-----------------------------------------------------------------------
-bot.add_cog(streamer.Streamer(db))
-bot.add_cog(announce.Announce(db))
-bot.add_cog(manage_users.ManageUsers(bot, db))
-bot.add_cog(games.Games(db))
-bot.add_cog(games.SlotMachine(db))
-bot.add_cog(games.Blackjack(bot, db))
+bot.add_cog(streamer.Streamer(streamer_db))
+bot.add_cog(announce.Announce(management_db))
+bot.add_cog(manage_users.ManageUsers(management_db))
+bot.add_cog(games.Games(games_db))
+bot.add_cog(games.SlotMachine())
+bot.add_cog(games.Blackjack(bot))
 
 # ------------------------------------------------------------------------------
 

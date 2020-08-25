@@ -1,11 +1,11 @@
 from discord.ext import commands
 from Classes.twitch_streamer import TwitchStreamer
-from Classes.database import Database
+from Classes.database import StreamerDatabase
 
 
 class Streamer(commands.Cog):
 
-    def __init__(self, db: Database):
+    def __init__(self, db: StreamerDatabase):
         self.db = db
 
     @commands.group()
