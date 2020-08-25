@@ -64,7 +64,7 @@ class ManageUsers(commands.Cog):
         """
         blocked_ids = await self.db.get_banned_user_ids(str(ctx.guild.id))
 
-        if blocked_ids is []:
+        if not blocked_ids:
             await ctx.send('You have all been good! There is no banned users')
         else:
             msg = "These people have been naughty!\n"
