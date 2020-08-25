@@ -7,11 +7,11 @@ https://discord.com/api/oauth2/authorize?client_id=735617826894774363&permission
 - Twitch integration announces when ever your favourite streamer goes live
 - Can get weather for any location
 - ban and unban people from using commands
+- chat games with credit system
 - misc commands: can message bugs to the creator, roll dice, etc
 
 # To Come
 - play music from spotify playlist or youtube
-- chat games with credit systems
 - more
 
 # Requirements
