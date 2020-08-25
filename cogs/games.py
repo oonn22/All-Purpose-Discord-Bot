@@ -13,7 +13,6 @@ class Games(commands.Cog):
     def __init__(self, db: GamesDatabase):
         Games.db = db
 
-    @staticmethod
     async def check_player_has_account(ctx) -> bool:
         if not await Games.db.player_exists(str(ctx.author.id)):
             await Games.db.create_player(str(ctx.author.id))
@@ -226,7 +225,6 @@ class Blackjack(commands.Cog):
     def __init__(self, bot: commands.bot):
         self.bot = bot
 
-    @staticmethod
     def player_in_game(ctx):
         player = str(ctx.author.id)
         if player not in Blackjack.games:
