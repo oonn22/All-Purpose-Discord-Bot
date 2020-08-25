@@ -79,12 +79,14 @@ class Games(commands.Cog):
     async def beg(self, ctx):
         rand = randint(5, 70)
         if rand == 69:
+            await ctx.message.delete()
             await self.gained_credits(ctx,
                                       str(ctx.author.id),
                                       randint(1, 5),
                                       Games.db
                                       )
         elif rand == 68:
+            await ctx.message.delete()
             await self.lost_credits(ctx,
                                     str(ctx.author.id),
                                     1,
