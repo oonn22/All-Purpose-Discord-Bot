@@ -262,7 +262,7 @@ class Blackjack(commands.Cog):
                 chnl_id = ctx.channel.id
                 game = BlackjackGame(msg.id, chnl_id, ctx.author.mention, bet)
                 Blackjack.games[player_id] = game
-                await Games.update_game(game)
+                await self.update_game(game)
         else:
             await ctx.send("Please enter a valid bet!")
 
