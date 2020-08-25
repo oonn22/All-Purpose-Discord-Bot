@@ -1,6 +1,5 @@
 import discord
 import config
-import traceback
 import Classes.database as database
 from discord.ext import commands, tasks
 from cogs import streamer, announce, manage_users, games
