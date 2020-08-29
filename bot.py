@@ -5,7 +5,7 @@ import Classes.discord_helpers as discord_helpers
 from discord.ext import commands, tasks
 from cogs import streamer, announce, manage_users, games
 from Classes.weather import Weather
-from Classes.blocked_command_error import BlockedCommandError
+from Classes.exceptions import BlockedCommandError
 from Classes.check_live import CheckLive
 from random import randint
 
@@ -81,7 +81,7 @@ async def is_blocked(ctx) -> bool:
     verifies on every command.
     """
     if await management_db.is_banned(str(ctx.author.id), str(ctx.guild.id)):
-        raise BlockedCommandError
+        raise BlockedCommandException
     else:
         return True
 
@@ -167,7 +167,7 @@ async def code(ctx):
 # ---METHODS--------------------------------------------------------------------
 
 # ---TASKS----------------------------------------------------------------------
-@tasks.loop(minutes=1.0)
+@tasks.loop(minutes=1.5)
 async def is_live():
     await live_check.check_live(bot)
 

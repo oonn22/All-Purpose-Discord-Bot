@@ -4,6 +4,7 @@ from Classes.twitch_streamer import TwitchStreamer
 from discord.ext import commands
 
 
+# redo to work with new class
 class CheckLive:
 
     def __init__(self, streamer_db: StreamerDatabase,
@@ -16,6 +17,7 @@ class CheckLive:
         for guild in bot.guilds:
             gid = str(guild.id)
             streamers = await self.streamer_db.get_streamers(gid)
+            streamers = await self.build_streamers(streamers)
             a_chnl_id = await self.server_manage_db.get_announcement_chnl(gid)
             a_chnl = bot.get_channel(int(a_chnl_id))
             default_role = guild.default_role
@@ -24,27 +26,35 @@ class CheckLive:
                 self.build_dict(guild.id, streamers)
 
             for streamer in streamers:
-                if streamer not in self.announced_streamers[guild.id]:
-                    self.announced_streamers[guild.id][streamer] = False
+                name = streamer.streamer_name
+                if name not in self.announced_streamers[guild.id]:
+                    self.announced_streamers[guild.id][name] = False
 
-                if await self.check_streamer(TwitchStreamer(streamer),
-                                             guild.id):
-                    await a_chnl.send(str(default_role) + " " + streamer
-                                      + " has gone live! check them out at "
-                                      "https://www.twitch.tv/" + streamer)
+                if await self.check_streamer(streamer, guild.id):
+                    await a_chnl.send(str(default_role) + ' ' + name
+                                      + ' has gone live! check them out at '
+                                      'https://www.twitch.tv/' + name + \
+                                      '\nTitle: ' + streamer.stream_title +
+                                      '\nGame: ' + streamer.stream_game +
+                                      '\nViewers: ' + str(streamer.viewers))
+
+    async def build_streamers(self, streamers: list) -> list:
+        to_return = []
+        for streamer in streamers:
+            ts = TwitchStreamer(streamer)
+            await ts.update_streamer_info()
+            to_return.append(ts)
+        return to_return
 
     def build_dict(self, guild_id, streamers: list):
         self.announced_streamers[guild_id] = {}
         for streamer in streamers:
-            self.announced_streamers[guild_id][streamer] = False
+            self.announced_streamers[guild_id][streamer.streamer_name] = False
 
     async def check_streamer(self, s: TwitchStreamer, guild_id) -> bool:
-        is_live = await s.get_is_live()
-        await asyncio.sleep(1)
-
         if self.announced_streamers[guild_id][s.streamer_name]:
-            self.announced_streamers[guild_id][s.streamer_name] = is_live
+            self.announced_streamers[guild_id][s.streamer_name] = s.is_live
             return False
         else:
-            self.announced_streamers[guild_id][s.streamer_name] = is_live
-            return is_live
+            self.announced_streamers[guild_id][s.streamer_name] = s.is_live
+            return s.is_live

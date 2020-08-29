@@ -4,6 +4,7 @@ from asyncio import sleep
 from discord.ext import commands
 from Classes.database import GamesDatabase
 from Classes.blackjack_game import BlackjackGame
+from Classes.exceptions import NotInGameError
 from random import randint, choice
 from typing import Optional
 
@@ -313,10 +314,3 @@ class Blackjack(commands.Cog):
         else:
             await Games.gained_credits(ctx, player_id, game.bet * 2, Games.db)
         del Blackjack.games[player_id]
-
-
-class NotInGameError(commands.CommandError):
-    pass
-
-
-
