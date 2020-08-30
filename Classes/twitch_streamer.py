@@ -17,14 +17,10 @@ class TwitchStreamer:
     viewers: if the streamer is live, this will be the number of viewers they have
 
     === Private Attributes ===
-    _token: CLASS ATTRIBUTE, the oauth token used to query twitch api
-    _token_expires: CLASS ATTRIBUTE, unix time of when _token is no longer valid
     _client_id: CLASS ATTRIBUTE, credential to use twitch api
     _client_secret: CLASS ATTRIBUTE, credential to create oauth token
 
     """
-    _token = None
-    _token_expires = None
     _client_id = config.twitch_client_id
     _client_secret = config.twitch_client_secret
 
@@ -39,17 +35,17 @@ class TwitchStreamer:
     async def update_streamer_info(self):
         url = 'https://api.twitch.tv/helix/streams?user_login=' + \
               self.streamer_name
-        await TwitchStreamer.get_token_if_expired()
+        token = await TwitchStreamer._get_token()
 
         if not self.valid:
             await self.validate_user()
 
         if self.valid:
             headers = {
-                'Authorization': 'Bearer ' + TwitchStreamer._token,
+                'Authorization': 'Bearer ' + token,
                 'client-id': TwitchStreamer._client_id
             }
-            json = await TwitchStreamer._ensure_valid_get(url, headers)
+            json = await TwitchStreamer._get_request(url, headers)
 
             print(json, self.streamer_name)
             data = json['data']
@@ -68,51 +64,30 @@ class TwitchStreamer:
 
     async def validate_user(self) -> bool:
         url = 'https://api.twitch.tv/helix/users?login=' + self.streamer_name
-        token = await TwitchStreamer.get_specific_token(scope='user:read:email')
+        token = await TwitchStreamer._get_token(scope='user:read:email')
         headers = {
             'Authorization': 'Bearer ' + token,
             'client-id': TwitchStreamer._client_id
         }
 
-        json = await TwitchStreamer._ensure_valid_get(url, headers)
-        valid = (not json['data'] == [])
-        self.valid = valid
-        return valid
+        json = await TwitchStreamer._get_request(url, headers)
+        self.valid = (not json['data'] == [])
+        return self.valid
 
     @staticmethod
     async def game_id_to_name(game_id: str) -> str:
         url = 'https://api.twitch.tv/helix/games?id=' + game_id
-        await TwitchStreamer.get_token_if_expired()
+        token = await TwitchStreamer._get_token()
         headers = {
-            'Authorization': 'Bearer ' + TwitchStreamer._token,
+            'Authorization': 'Bearer ' + token,
             'client-id': TwitchStreamer._client_id
         }
 
-        json = await TwitchStreamer._ensure_valid_get(url, headers)
+        json = await TwitchStreamer._get_request(url, headers)
         return json['data'][0]['name']
 
     @staticmethod
-    async def get_token_if_expired(scope=''):
-        if TwitchStreamer._token is None or int(time.time()) > TwitchStreamer._token_expires:
-            await TwitchStreamer.update_token(scope=scope)
-
-    @staticmethod
-    async def update_token(scope=''):
-        url = 'https://id.twitch.tv/oauth2/token'
-        params = {
-            'client_id': TwitchStreamer._client_id,
-            'client_secret': TwitchStreamer._client_secret,
-            'grant_type': 'client_credentials'
-        }
-        if scope != '':
-            params['scope'] = scope
-
-        json = await TwitchStreamer._post_request(url, params)
-        TwitchStreamer._token = json['access_token']
-        TwitchStreamer._token_expires = int(time.time()) + (json['expires_in'] - 500)
-
-    @staticmethod
-    async def get_specific_token(scope='') -> str:
+    async def _get_token(scope=''):
         url = 'https://id.twitch.tv/oauth2/token'
         params = {
             'client_id': TwitchStreamer._client_id,
@@ -126,27 +101,10 @@ class TwitchStreamer:
         return json['access_token']
 
     @staticmethod
-    async def _ensure_valid_get(url, headers) -> dict:
-        """ method to ensure our get request goes through as our token
-        may expire at any time causing an unauthorized response
-        """
-        try:
-            return await TwitchStreamer._get_request(url, headers)
-        except Error401Exception as unauthorized1:
-            await TwitchStreamer.update_token()
-            try:
-                return await TwitchStreamer._get_request(url, headers)
-            except Error401Exception as unauthorized2:
-                raise TwitchAuthorizationError()
-
-    @staticmethod
     async def _get_request(url, headers) -> dict:
         async with aiohttp.ClientSession() as session:
             async with session.get(url=url, headers=headers) as resp:
-                if resp.status == 401:
-                    raise Error401Exception('Error 401: Unauthorized')
-                else:
-                    json = await resp.json()
+                json = await resp.json()
         return json
 
     @staticmethod
@@ -155,10 +113,7 @@ class TwitchStreamer:
         while json is None:
             async with aiohttp.ClientSession() as session:
                 async with session.post(url=url, data=params) as resp:
-                    if resp.status == 401:
-                        raise Error401Exception('Error 401: Unauthorized')
-                    else:
-                        json = await resp.json()
+                    json = await resp.json()
         return json
 
 
