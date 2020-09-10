@@ -313,4 +313,5 @@ class Blackjack(commands.Cog):
             await Games.lost_credits(ctx, player_id, game.bet, Games.db)
         else:
             await Games.gained_credits(ctx, player_id, game.bet * 2, Games.db)
+        # await discord_helpers.del_msgs_after([chnl.fetch_message(game.msg_id)])
         del Blackjack.games[player_id]
