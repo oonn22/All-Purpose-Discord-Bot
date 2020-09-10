@@ -30,7 +30,7 @@ class CheckLive:
                 if name not in self.announced_streamers[guild.id]:
                     self.announced_streamers[guild.id][name] = False
 
-                if await self.check_streamer(streamer, guild.id):
+                if await self.check_streamer(streamer, guild.id) and a_chnl is not None:
                     await a_chnl.send(str(default_role) + ' ' + name
                                       + ' has gone live! check them out at '
                                       'https://www.twitch.tv/' + name + \
