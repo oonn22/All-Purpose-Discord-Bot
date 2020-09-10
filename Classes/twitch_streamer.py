@@ -33,21 +33,13 @@ class TwitchStreamer:
         self.viewers = 0
 
     async def update_streamer_info(self):
-        url = 'https://api.twitch.tv/helix/streams?user_login=' + \
-              self.streamer_name
-        token = await TwitchStreamer._get_token()
-
         if not self.valid:
             await self.validate_user()
 
         if self.valid:
-            headers = {
-                'Authorization': 'Bearer ' + token,
-                'client-id': TwitchStreamer._client_id
-            }
-            json = await TwitchStreamer._get_request(url, headers)
-
-            print(json, self.streamer_name)
+            url = 'https://api.twitch.tv/helix/streams?user_login=' + \
+                  self.streamer_name
+            json = await TwitchStreamer._get_data(url)
             data = json['data']
             self.is_live = not (data == [])  # the value of 'data' for a non-live streamer is []
 
@@ -64,27 +56,28 @@ class TwitchStreamer:
 
     async def validate_user(self) -> bool:
         url = 'https://api.twitch.tv/helix/users?login=' + self.streamer_name
-        token = await TwitchStreamer._get_token(scope='user:read:email')
-        headers = {
-            'Authorization': 'Bearer ' + token,
-            'client-id': TwitchStreamer._client_id
-        }
-
-        json = await TwitchStreamer._get_request(url, headers)
+        json = await TwitchStreamer._get_data(url, scope='user:read:email')
         self.valid = (not json['data'] == [])
         return self.valid
 
     @staticmethod
     async def game_id_to_name(game_id: str) -> str:
         url = 'https://api.twitch.tv/helix/games?id=' + game_id
-        token = await TwitchStreamer._get_token()
-        headers = {
-            'Authorization': 'Bearer ' + token,
-            'client-id': TwitchStreamer._client_id
-        }
+        json = await TwitchStreamer._get_data(url)
 
-        json = await TwitchStreamer._get_request(url, headers)
         return json['data'][0]['name']
+
+    @staticmethod
+    async def _get_data(url, scope='') -> dict:
+        json = {}
+        while 'data' not in json:  # sometimes we get an unauthorized response, this tries again if that happens
+            token = await TwitchStreamer._get_token(scope=scope)
+            headers = {
+                'Authorization': 'Bearer ' + token,
+                'client-id': TwitchStreamer._client_id
+            }
+            json = await TwitchStreamer._get_request(url, headers)
+        return json
 
     @staticmethod
     async def _get_token(scope=''):
@@ -96,8 +89,9 @@ class TwitchStreamer:
         }
         if scope != '':
             params['scope'] = scope
-
-        json = await TwitchStreamer._post_request(url, params)
+        json = {}
+        while json is None or 'access_token' not in json:
+            json = await TwitchStreamer._post_request(url, params)
         return json['access_token']
 
     @staticmethod
@@ -105,6 +99,7 @@ class TwitchStreamer:
         async with aiohttp.ClientSession() as session:
             async with session.get(url=url, headers=headers) as resp:
                 json = await resp.json()
+                print(json)
         return json
 
     @staticmethod
