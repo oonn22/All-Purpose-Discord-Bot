@@ -1,5 +1,5 @@
 import discord
-import Classes.discord_helpers as discord_helpers
+import discord_helpers as discord_helpers
 from discord.ext import commands
 from Classes.database import ServerManageDatabase
 from typing import Optional

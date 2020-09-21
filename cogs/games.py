@@ -1,4 +1,4 @@
-import Classes.discord_helpers as discord_helpers
+import discord_helpers as discord_helpers
 from time import time
 from asyncio import sleep
 from discord.ext import commands
@@ -315,3 +315,5 @@ class Blackjack(commands.Cog):
             await Games.gained_credits(ctx, player_id, game.bet * 2, Games.db)
         # await discord_helpers.del_msgs_after([chnl.fetch_message(game.msg_id)])
         del Blackjack.games[player_id]
+
+

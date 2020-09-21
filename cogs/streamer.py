@@ -1,4 +1,4 @@
-import Classes.discord_helpers as discord_helpers
+import discord_helpers as discord_helpers
 from discord.ext import commands
 from Classes.twitch_streamer import TwitchStreamer
 from Classes.database import StreamerDatabase

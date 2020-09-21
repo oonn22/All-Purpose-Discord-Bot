@@ -1,4 +1,5 @@
 import asyncio
+import discord_helpers
 from Classes.database import StreamerDatabase, ServerManageDatabase
 from Classes.twitch_streamer import TwitchStreamer
 from discord.ext import commands
@@ -31,12 +32,12 @@ class CheckLive:
                     self.announced_streamers[guild.id][name] = False
 
                 if await self.check_streamer(streamer, guild.id) and a_chnl is not None:
-                    await a_chnl.send(str(default_role) + ' ' + name
-                                      + ' has gone live! check them out at '
-                                      'https://www.twitch.tv/' + name + \
-                                      '\nTitle: ' + streamer.stream_title +
-                                      '\nGame: ' + streamer.stream_game +
-                                      '\nViewers: ' + str(streamer.viewers))
+                    msg = str(default_role) + ' ' + name + \
+                          ' has gone live! check them out at https://www.twitch.tv/'\
+                          + name + '\nTitle: ' + streamer.stream_title + '\nGame: ' + \
+                          streamer.stream_game + '\nViewers: ' + str(streamer.viewers)
+                    msg = discord_helpers.markdownify_message(msg)
+                    await a_chnl.send(msg)
 
     async def build_streamers(self, streamers: list) -> list:
         to_return = []

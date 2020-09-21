@@ -1,7 +1,7 @@
 import discord
 import config
 import Classes.database as database
-import Classes.discord_helpers as discord_helpers
+import discord_helpers as discord_helpers
 from discord.ext import commands, tasks
 from cogs import streamer, announce, manage_users, games
 from Classes.weather import Weather
