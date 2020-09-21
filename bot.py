@@ -3,7 +3,7 @@ import config
 import Classes.database as database
 import discord_helpers as discord_helpers
 from discord.ext import commands, tasks
-from cogs import streamer, announce, manage_users, games
+from cogs import twitch, announce, manage_users, games
 from Classes.weather import Weather
 from Classes.exceptions import BlockedCommandError
 from Classes.check_live import CheckLive
@@ -92,7 +92,7 @@ async def is_blocked(ctx) -> bool:
 async def help(ctx):
     help_msg = "Here are my commands:\n" \
                "\n**Admin Commands:**\n" \
-               ";streamer - Gives more info on commands related to twitch " \
+               ";twitch - Gives more info on commands related to twitch " \
                "streamers\n" \
                ";announce - Gives more info on commands related to " \
                "announcements from this bot\n" \
@@ -172,7 +172,7 @@ async def is_live():
     await live_check.check_live(bot)
 
 # ---COGS-----------------------------------------------------------------------
-bot.add_cog(streamer.Streamer(streamer_db))
+bot.add_cog(twitch.Twitch(streamer_db))
 bot.add_cog(announce.Announce(management_db))
 bot.add_cog(manage_users.ManageUsers(management_db))
 bot.add_cog(games.Games(games_db))

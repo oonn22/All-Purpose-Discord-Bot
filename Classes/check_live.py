@@ -5,7 +5,6 @@ from Classes.twitch_streamer import TwitchStreamer
 from discord.ext import commands
 
 
-# redo to work with new class
 class CheckLive:
 
     def __init__(self, streamer_db: StreamerDatabase,
